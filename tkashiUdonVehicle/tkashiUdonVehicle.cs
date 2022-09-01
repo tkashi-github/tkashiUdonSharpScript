@@ -78,14 +78,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     [Header("------------------------------------------------------------------")]
     [Header("Accelerator responsiveness")]
-    [SerializeField] [Range(0.1f, 10.0f)] private float AcceleratorResponse = 1.0f;
-
-    
-   
-
-    [Header("------------------------------------------------------------------")]
-    [Header("Debug Mode for Unity Play Mode")]
-    [SerializeField] private bool bDebugMode = false;
+    [SerializeField] [Range(0.1f, 10.0f)] private float AcceleratorResponse = 2.0f;
 
     [Header("------------------------------------------------------------------")]
     [Header("Audio Source Object")]
@@ -100,7 +93,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     [Header("Default = 300 km/h")]
     [SerializeField] [Range(0.0f, 500.0f)] private float downForceSpeedTh = 200.0f;
     [Header("Default = 2.0")]
-    [SerializeField] [Range(0.0f, 10.0f)] private float downForceRate = 4.0f;
+    [SerializeField] [Range(0.0f, 100.0f)] private float downForceRate = 2.0f;
 
     [SerializeField] private Vector3 m_defaultPosHandle = new Vector3(-0.35f, 0.55f, 0.45f);
     [SerializeField] private Vector3 m_defaultPosAccelerator = new Vector3(0.35f, 0.55f, 0.45f);
@@ -132,9 +125,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             Speedkmh = value;
-            updateWheelFrictionCurve(Speedkmh);
-            int temp = Convert.ToInt32(Speedkmh);
-            SpeedMeter.text = temp.ToString();
         }
         get => Speedkmh;
     }
@@ -152,7 +142,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             motorTorque = value;
-            updateMotorTorque(motorTorque);      
         }
         get => motorTorque;
     }
@@ -161,7 +150,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             brakeTorque = value;
-            updateBrakeTorque(brakeTorque);  
         }
         get => brakeTorque;
     }
@@ -190,7 +178,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             TireSteerAngle = value;
-            updateWheelAngle(TireSteerAngle);
         }
         get => TireSteerAngle;
     }
@@ -290,32 +277,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
             }
         }
     }
-    private void updateTireMeshByWheelCollider()
-    {
-        Vector3 pos;
-        Quaternion rot;
-        wcFrontL.GetWorldPose(out pos, out rot);
-        FrontTire_L.transform.position = pos;
-        FrontTire_L.transform.rotation = rot;
-
-        wcFrontR.GetWorldPose(out pos, out rot);
-        FrontTire_R.transform.position = pos;
-        FrontTire_R.transform.rotation = rot;
-
-        wcRearL.GetWorldPose(out pos, out rot);
-        RearTire_L.transform.position = pos;
-        RearTire_L.transform.rotation = rot;
-
-        wcRearR.GetWorldPose(out pos, out rot);
-        RearTire_R.transform.position = pos;
-        RearTire_R.transform.rotation = rot;
-    }
-
-    private void updateWheelAngle(float angle)
-    {
-        wcFrontL.steerAngle = angle;
-        wcFrontR.steerAngle = angle;
-    }
+    
     private float getSteerAngle()
     {
         float angle = HandleGameobject.transform.localEulerAngles.z; // どうもrigid bodyにはlocalRationは無いようだ
@@ -335,96 +297,133 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         {
             if(audioSrcEngineIdle != null)
             {
-                audioSrcEngineIdle.pitch = Mathf.Abs(motorTorque)/ maxMotorTorque;
+                audioSrcEngineIdle.pitch = 1.0f + Mathf.Abs(motorTorque)/ maxMotorTorque;
             }
 
             if(audioSrcRoadNoise != null)
             {
                 audioSrcRoadNoise.volume = Mathf.Abs(Speedkmh)/ downForceSpeedTh;
             }
+        
+            // Update speed meter
+            int temp = Convert.ToInt32(Speedkmh);
+            SpeedMeter.text = temp.ToString();
         }
-
-        // Update speed meter
-        int temp = Convert.ToInt32(Speedkmh);
-        SpeedMeter.text = temp.ToString();
     }
     private void FixedUpdate()
     {
-        if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+        if (bDriving)
         {
-            resetHande_Accelerator_Position();
+            if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+            {
+                resetHande_Accelerator_Position();
 
-            Speedkmh = m_thisRigid.velocity.magnitude * 3.6f;                        
-            LastPos = m_thisRigid.position;
-            LastRotation = m_thisRigid.rotation;
-            TireSteerAngle = -getSteerAngle();
+                Speedkmh = m_thisRigid.velocity.magnitude * 3.6f;                        
+                LastPos = m_thisRigid.position;
+                LastRotation = m_thisRigid.rotation;
+                TireSteerAngle = -getSteerAngle();
 
-            float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
-            float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
-            motorTorque = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
+                float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
+                float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
+                motorTorque = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
 
-            RequestSerialization();
+                RequestSerialization();
+            }
+            updateWheelFrictionCurve(Speedkmh);
+            updateMotorBreakTorque(motorTorque, brakeTorque);
+            updateWheelAngle(TireSteerAngle);
+            updateTireMeshByWheelCollider();
         }
-        updateWheelFrictionCurve(Speedkmh);
-        updateMotorTorque(motorTorque);
-        updateWheelAngle(TireSteerAngle);
-        updateTireMeshByWheelCollider();
+    }
+    private void updateTireMeshByWheelCollider()
+    {
+        if (bDriving)
+        {
+            Vector3 pos;
+            Quaternion rot;
+            wcFrontL.GetWorldPose(out pos, out rot);
+            FrontTire_L.transform.position = pos;
+            FrontTire_L.transform.rotation = rot;
+
+            wcFrontR.GetWorldPose(out pos, out rot);
+            FrontTire_R.transform.position = pos;
+            FrontTire_R.transform.rotation = rot;
+
+            wcRearL.GetWorldPose(out pos, out rot);
+            RearTire_L.transform.position = pos;
+            RearTire_L.transform.rotation = rot;
+
+            wcRearR.GetWorldPose(out pos, out rot);
+            RearTire_R.transform.position = pos;
+            RearTire_R.transform.rotation = rot;
+        }
+    }
+
+    private void updateWheelAngle(float angle)
+    {
+        if (bDriving)
+        {
+            wcFrontL.steerAngle = angle;
+            wcFrontR.steerAngle = angle;
+        }
     }
 
     public void updateWheelFrictionCurve(float val)
     {
-        float fp = 1.0f + downForceRate*(Speedkmh/downForceSpeedTh);
+        if (bDriving)
+        {
+            float fp = 1.0f + downForceRate*(Speedkmh/downForceSpeedTh);
 
-        WheelFrictionCurve wfc = wcFrontL.forwardFriction;
-        wfc.stiffness = fp;
-        wcFrontL.forwardFriction = wfc;
+            WheelFrictionCurve wfc = wcFrontL.forwardFriction;
+            wfc.stiffness = fp;
+            wcFrontL.forwardFriction = wfc;
+            wcFrontL.sidewaysFriction = wfc;
 
-        wfc = wcFrontR.forwardFriction;
-        wfc.stiffness = fp;
-        wcFrontR.forwardFriction = wfc;
+            wfc = wcFrontR.forwardFriction;
+            wfc.stiffness = fp;
+            wcFrontR.forwardFriction = wfc;
+            wcFrontR.sidewaysFriction = wfc;
 
-        wfc = wcRearL.forwardFriction;
-        wfc.stiffness = fp;
-        wcRearL.forwardFriction = wfc;
+            wfc = wcRearL.forwardFriction;
+            wfc.stiffness = fp;
+            wcRearL.forwardFriction = wfc;
+            wcRearL.sidewaysFriction = wfc;
 
-        wfc = wcRearR.forwardFriction;
-        wfc.stiffness = fp;
-        wcRearR.forwardFriction = wfc;
+            wfc = wcRearR.forwardFriction;
+            wfc.stiffness = fp;
+            wcRearR.forwardFriction = wfc;
+            wcRearR.sidewaysFriction = wfc;
+        }
     }
-    public void updateMotorTorque(float Torque)
+    public void updateMotorBreakTorque(float mtrTq, float brkTq)
     {
-        if(BrakeOn == false)
+        if (bDriving)
         {
-            wcFrontL.motorTorque = Torque;
-            wcFrontR.motorTorque = Torque;
-            wcRearL.motorTorque = Torque;
-            wcRearR.motorTorque = Torque;
-        }
-        else
-        {
-            wcFrontL.motorTorque = 0.0f;
-            wcFrontR.motorTorque = 0.0f;
-            wcRearL.motorTorque = 0.0f;
-            wcRearR.motorTorque = 0.0f;
-        }
-    }
-    public void updateBrakeTorque(float Torque)
-    {
-        if(BrakeOn == false)
-        {
-            wcFrontL.brakeTorque = 0.0f;
-            wcFrontR.brakeTorque = 0.0f;
-            wcRearL.brakeTorque = 0.0f;
-            wcRearR.brakeTorque = 0.0f;
-        }
-        else
-        {
-            wcFrontL.brakeTorque = Torque;
-            wcFrontR.brakeTorque = Torque;
-            wcRearL.brakeTorque = Torque;
-            wcRearR.brakeTorque = Torque;
+            if(BrakeOn == false)
+            {
+                wcFrontL.motorTorque = mtrTq;
+                wcFrontR.motorTorque = mtrTq;
+                wcRearL.motorTorque = mtrTq;
+                wcRearR.motorTorque = mtrTq;
+                wcFrontL.brakeTorque = 0.0f;
+                wcFrontR.brakeTorque = 0.0f;
+                wcRearL.brakeTorque = 0.0f;
+                wcRearR.brakeTorque = 0.0f;
+            }
+            else
+            {
+                wcFrontL.motorTorque = 0.0f;
+                wcFrontR.motorTorque = 0.0f;
+                wcRearL.motorTorque = 0.0f;
+                wcRearR.motorTorque = 0.0f;
+                wcFrontL.brakeTorque = brkTq;
+                wcFrontR.brakeTorque = brkTq;
+                wcRearL.brakeTorque = brkTq;
+                wcRearR.brakeTorque = brkTq;
+            }
         }
     }
+
     public override void Interact()
     {
         
@@ -438,19 +437,21 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     }
     public override void InputUse(bool value, UdonInputEventArgs args)
     {
-        if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+        if (bDriving)
         {
-            BrakeOn = value;
-            if(value == false)
+            if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
             {
-                brakeTorque = 0.0f;
+                BrakeOn = value;
+                if(value == false)
+                {
+                    brakeTorque = 0.0f;
+                }
+                else
+                {
+                    brakeTorque = maxMotorTorque*2.0f;
+                }
+                updateMotorBreakTorque(motorTorque, brakeTorque);  
             }
-            else
-            {
-                brakeTorque = maxMotorTorque*2.0f;
-                updateMotorTorque(0.0f);
-            }
-            updateBrakeTorque(brakeTorque);
         }
     }
 
@@ -460,6 +461,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         {
             resetHande_Accelerator_Position();
             motorTorque = 0.0f;
+            brakeTorque = 0.0f;
         }
         HandleGameobject.transform.localEulerAngles = Vector3.zero;
         AcceleratorGameObject.transform.localEulerAngles = Vector3.zero;
@@ -467,7 +469,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         m_AcceleratorRigid.rotation = m_thisRigid.rotation;
         m_thisRigid.velocity = Vector3.zero;
         
-        updateMotorTorque(0.0f);
+        updateMotorBreakTorque(0.0f, 0.0f); 
         updateWheelAngle(0.0f);
         updateTireMeshByWheelCollider();
     }
