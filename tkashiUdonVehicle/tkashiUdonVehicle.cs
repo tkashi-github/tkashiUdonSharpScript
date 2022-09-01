@@ -48,9 +48,9 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     [Header("------------------------------------------------------------------")]
     [Header("a game object has VRC pickup for accelerator")]
-    [Header("Accelerator opening refers to AxleGameObject.transform.localEulerAngles.x")]
-    [SerializeField] private GameObject AxleGameObject;
-    [SerializeField] private IsPickUped AxlePickup;
+    [Header("Accelerator opening refers to AcceleratorGameObject.transform.localEulerAngles.x")]
+    [SerializeField] private GameObject AcceleratorGameObject;
+    [SerializeField] private IsPickUped AcceleratorPickup;
 
     [Header("------------------------------------------------------------------")]
     [Header("a game Object with wheel collider")]
@@ -68,7 +68,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     [Header("------------------------------------------------------------------")]
     [Header("Max MotorTorque for wheel Collider")]
-    [SerializeField] [Range(1.0f, 2000.0f)] private float maxMotorTorque = 1000.0f;
+    [SerializeField] [Range(1.0f, 2000.0f)] private float maxMotorTorque = 500.0f;
 
     [Header("------------------------------------------------------------------")]
     [Header("handle responsiveness")]
@@ -77,8 +77,8 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     [SerializeField] [Range(0.0f, 90.0f)] private float MaxSteerAngle = 30.0f;
 
     [Header("------------------------------------------------------------------")]
-    [Header("Axle responsiveness")]
-    [SerializeField] [Range(0.1f, 10.0f)] private float axleResponse = 1.0f;
+    [Header("Accelerator responsiveness")]
+    [SerializeField] [Range(0.1f, 10.0f)] private float AcceleratorResponse = 1.0f;
 
     
    
@@ -98,19 +98,16 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     [Header("------------------------------------------------------------------")]
     [SerializeField] private TextMeshProUGUI SpeedMeter;
     [Header("Default = 300 km/h")]
-    [SerializeField] [Range(0.0f, 500.0f)] private float downForceSpeedTh = 300.0f;
+    [SerializeField] [Range(0.0f, 500.0f)] private float downForceSpeedTh = 200.0f;
     [Header("Default = 2.0")]
-    [SerializeField] [Range(0.0f, 10.0f)] private float downForceRate = 2.0f;
+    [SerializeField] [Range(0.0f, 10.0f)] private float downForceRate = 4.0f;
 
     [SerializeField] private Vector3 m_defaultPosHandle = new Vector3(-0.35f, 0.55f, 0.45f);
-    [SerializeField] private Vector3 m_defaultPosAxle = new Vector3(0.35f, 0.55f, 0.45f);
-
-    [SerializeField] private TextMeshProUGUI degubWindow;
-
+    [SerializeField] private Vector3 m_defaultPosAccelerator = new Vector3(0.35f, 0.55f, 0.45f);
     
     private Rigidbody m_thisRigid;
     private Rigidbody m_HandleRigid;
-    private Rigidbody m_AxleRigid;
+    private Rigidbody m_AcceleratorRigid;
     private float Speedkmh = 0.0f;
     private WheelCollider wcFrontL;
     private WheelCollider wcFrontR;
@@ -127,9 +124,9 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     [UdonSynced, FieldChangeCallback(nameof(SyncedEngineIdlePitch))] private float EngineIdlePitch;
     [UdonSynced, FieldChangeCallback(nameof(SyncedRoadNoiseVolume))] private float RoadNoiseVolume;
     [UdonSynced, FieldChangeCallback(nameof(SyncedHandleAngle))] private Vector3 HandleAngle;
-    [UdonSynced, FieldChangeCallback(nameof(SyncedAxleAngle))] private Vector3 AxleAngle;
+    [UdonSynced, FieldChangeCallback(nameof(SyncedAcceleratorAngle))] private Vector3 AcceleratorAngle;
     [UdonSynced, FieldChangeCallback(nameof(SyncedHandleRigidPos))] private Vector3 HandleRigidPos;
-    [UdonSynced, FieldChangeCallback(nameof(SyncedAxleRigidPos))] private Vector3 AxleRigidPos;
+    [UdonSynced, FieldChangeCallback(nameof(SyncedAcceleratorRigidPos))] private Vector3 AcceleratorRigidPos;
 	[UdonSynced, FieldChangeCallback(nameof(SyncedIsRideOn))] private bool IsRideOn;
 
     [UdonSynced, FieldChangeCallback(nameof(SyncedFLTireMeshPosition))] private Vector3 FLTireMeshPosition;
@@ -311,14 +308,14 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         }
         get => HandleAngle;
     }
-    public Vector3 SyncedAxleAngle
+    public Vector3 SyncedAcceleratorAngle
     {
         set
         {
-            AxleAngle = value;
-            AxleGameObject.transform.localEulerAngles = AxleAngle;
+            AcceleratorAngle = value;
+            AcceleratorGameObject.transform.localEulerAngles = AcceleratorAngle;
         }
-        get => AxleAngle;
+        get => AcceleratorAngle;
     }
 
     public float SyncedLastSpeed
@@ -340,14 +337,14 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         }
         get => HandleRigidPos;
     }
-    public Vector3 SyncedAxleRigidPos
+    public Vector3 SyncedAcceleratorRigidPos
     {
         set
         {
-            AxleRigidPos = value;
-            m_AxleRigid.MovePosition(AxleRigidPos);
+            AcceleratorRigidPos = value;
+            m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
         }
-        get => AxleRigidPos;
+        get => AcceleratorRigidPos;
     }
     
     // Start is called before the first frame update
@@ -355,7 +352,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     {
         m_thisRigid = GetComponent<Rigidbody>();
         m_HandleRigid = HandleGameobject.GetComponent<Rigidbody>();
-        m_AxleRigid = AxleGameObject.GetComponent<Rigidbody>();
+        m_AcceleratorRigid = AcceleratorGameObject.GetComponent<Rigidbody>();
         wcFrontL = FrontWheel_L.GetComponent<WheelCollider>();
         wcFrontR = FrontWheel_R.GetComponent<WheelCollider>();
         wcRearL = RearWheel_L.GetComponent<WheelCollider>();
@@ -410,7 +407,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         }
     }
 
-    private void resetHande_Axle_Position()
+    private void resetHande_Accelerator_Position()
     {
         if (Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
         {
@@ -425,17 +422,17 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 HandleAngle = EulerAngles;
                 HandleGameobject.transform.localEulerAngles = HandleAngle;
             }
-            if(m_AxleRigid != null)
+            if(m_AcceleratorRigid != null)
             {
-                if(AxlePickup.pickUped == false)
+                if(AcceleratorPickup.pickUped == false)
                 {
                     // TransformPoint : ローカル空間からワールド空間へ position を変換します。
-                    AxleRigidPos = this.transform.TransformPoint(m_defaultPosAxle);
-                    m_AxleRigid.MovePosition(AxleRigidPos);
+                    AcceleratorRigidPos = this.transform.TransformPoint(m_defaultPosAccelerator);
+                    m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
                 }
-                Vector3 EulerAngles = AxleGameObject.transform.localEulerAngles.x * Vector3.right;
-                AxleAngle = EulerAngles;
-                AxleGameObject.transform.localEulerAngles = AxleAngle;
+                Vector3 EulerAngles = AcceleratorGameObject.transform.localEulerAngles.x * Vector3.right;
+                AcceleratorAngle = EulerAngles;
+                AcceleratorGameObject.transform.localEulerAngles = AcceleratorAngle;
             }
         }
     }
@@ -514,7 +511,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         if((IsRideOn != false) && (Networking.IsOwner(Networking.LocalPlayer, this.gameObject)))
         {
             Speedkmh = m_thisRigid.velocity.magnitude * 3.6f;
-            resetHande_Axle_Position();
+            resetHande_Accelerator_Position();
             updateTireMeshByWheelCollider();
             
             LastPos = m_thisRigid.position;
@@ -525,11 +522,11 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
             // ホイールへの回転角の適用
             updateWheelAngle(TireSteerAngle);
 
-            float EulerAnglesZ = - AxleGameObject.transform.localEulerAngles.x;
+            float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
             if(EulerAnglesZ != 0)
             {   // アクセル回転角のmotorTorqueへの適用
                 float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
-                float Speed = maxMotorTorque * Mathf.Clamp(axleResponse * Mathf.Sin(radians), -1.0f, 1.0f);
+                float Speed = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
                 _LastSpeed = Speed;
 
                 updateMotorTorque(_LastSpeed);
@@ -608,16 +605,16 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     public override void OnStationEntered()
     {   // OnStationEnteredは全プレイヤーから呼び出される
         m_HandleRigid.rotation = m_thisRigid.rotation;
-        m_AxleRigid.rotation = m_thisRigid.rotation;
+        m_AcceleratorRigid.rotation = m_thisRigid.rotation;
         if (Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
         {
-            resetHande_Axle_Position();
+            resetHande_Accelerator_Position();
 			_LastSpeed = 0.0f;
             IsRideOn = true;
         }
         m_thisRigid.velocity = Vector3.zero;
         HandleGameobject.transform.localEulerAngles = Vector3.zero;
-        AxleGameObject.transform.localEulerAngles = Vector3.zero;
+        AcceleratorGameObject.transform.localEulerAngles = Vector3.zero;
         wcFrontL.motorTorque  = 0.0f;
         wcFrontR.motorTorque  = 0.0f;
         wcRearL.motorTorque  = 0.0f;
@@ -636,14 +633,14 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         {
             IsRideOn = false;
             
-            resetHande_Axle_Position();
+            resetHande_Accelerator_Position();
             _LastSpeed = 0.0f;
         }
         
         HandleGameobject.transform.localEulerAngles = Vector3.zero;
-        AxleGameObject.transform.localEulerAngles = Vector3.zero;
+        AcceleratorGameObject.transform.localEulerAngles = Vector3.zero;
         m_HandleRigid.rotation = m_thisRigid.rotation;
-        m_AxleRigid.rotation = m_thisRigid.rotation;
+        m_AcceleratorRigid.rotation = m_thisRigid.rotation;
         m_thisRigid.velocity = Vector3.zero;
         
         wcFrontL.motorTorque  = 0.0f;
