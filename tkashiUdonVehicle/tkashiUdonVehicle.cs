@@ -467,11 +467,12 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         AcceleratorGameObject.transform.localEulerAngles = Vector3.zero;
         m_HandleRigid.rotation = m_thisRigid.rotation;
         m_AcceleratorRigid.rotation = m_thisRigid.rotation;
-        m_thisRigid.velocity = Vector3.zero;
+        
         
         updateMotorBreakTorque(0.0f, 0.0f); 
         updateWheelAngle(0.0f);
         updateTireMeshByWheelCollider();
+        m_thisRigid.velocity = Vector3.zero;
     }
     public override void OnStationEntered()
     {   // OnStationEnteredは全プレイヤーから呼び出される
