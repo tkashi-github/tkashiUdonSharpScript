@@ -36,7 +36,7 @@ using VRC.Udon;
 using VRC.Udon.Common;
 using TMPro;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+//[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 
 public class tkashiUdonVehicle : UdonSharpBehaviour
 {
@@ -105,7 +105,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     private WheelCollider wcFrontR;
     private WheelCollider wcRearL;
     private WheelCollider wcRearR;
-	private bool bDriving = false;
+	private bool bDriving = true;
 
     // Sync Parameters
 
@@ -159,7 +159,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             LastPos = value;
-            m_thisRigid.MovePosition(LastPos);
         }
         get => LastPos;
     }
@@ -187,7 +186,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             HandleRigidPos = value;
-            m_HandleRigid.MovePosition(HandleRigidPos);
         }
         get => HandleRigidPos;
     }
@@ -196,7 +194,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         set
         {
             AcceleratorRigidPos = value;
-            m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
         }
         get => AcceleratorRigidPos;
     }
@@ -326,13 +323,12 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
                 float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
                 motorTorque = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
-
-                RequestSerialization();
             }
-            updateWheelFrictionCurve(Speedkmh);
+            updateDownForce(Speedkmh);
             updateMotorBreakTorque(motorTorque, brakeTorque);
             updateWheelAngle(TireSteerAngle);
             updateTireMeshByWheelCollider();
+            
         }
     }
     private void updateTireMeshByWheelCollider()
@@ -368,31 +364,12 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         }
     }
 
-    public void updateWheelFrictionCurve(float val)
+    public void updateDownForce(float val)
     {
         if (bDriving)
         {
-            float fp = 1.0f + downForceRate*(Speedkmh/downForceSpeedTh);
-
-            WheelFrictionCurve wfc = wcFrontL.forwardFriction;
-            wfc.stiffness = fp;
-            wcFrontL.forwardFriction = wfc;
-            wcFrontL.sidewaysFriction = wfc;
-
-            wfc = wcFrontR.forwardFriction;
-            wfc.stiffness = fp;
-            wcFrontR.forwardFriction = wfc;
-            wcFrontR.sidewaysFriction = wfc;
-
-            wfc = wcRearL.forwardFriction;
-            wfc.stiffness = fp;
-            wcRearL.forwardFriction = wfc;
-            wcRearL.sidewaysFriction = wfc;
-
-            wfc = wcRearR.forwardFriction;
-            wfc.stiffness = fp;
-            wcRearR.forwardFriction = wfc;
-            wcRearR.sidewaysFriction = wfc;
+            float fp = downForceRate*(Speedkmh/downForceSpeedTh);
+            m_thisRigid.AddForce(this.transform.TransformPoint(Vector3.up * fp * (-9.8f)), ForceMode.Force);
         }
     }
     public void updateMotorBreakTorque(float mtrTq, float brkTq)
