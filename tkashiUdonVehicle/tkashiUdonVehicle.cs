@@ -305,6 +305,17 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
             // Update speed meter
             int temp = Convert.ToInt32(Speedkmh);
             SpeedMeter.text = temp.ToString();
+            RequestSerialization();
+            if(!Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+            {
+                m_thisRigid.MovePosition(LastPos);
+                m_HandleRigid.MovePosition(HandleRigidPos);
+                m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
+                updateDownForce(Speedkmh);
+                updateMotorBreakTorque(motorTorque, brakeTorque);
+                updateWheelAngle(TireSteerAngle);
+                updateTireMeshByWheelCollider();
+            }
         }
     }
     private void FixedUpdate()
@@ -323,19 +334,13 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
                 float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
                 motorTorque = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
+                updateDownForce(Speedkmh);
+                updateMotorBreakTorque(motorTorque, brakeTorque);
+                updateWheelAngle(TireSteerAngle);
+                updateTireMeshByWheelCollider();
+            }
 
-                RequestSerialization();
-            }
-            else
-            {
-                m_thisRigid.MovePosition(LastPos);
-                m_HandleRigid.MovePosition(HandleRigidPos);
-                m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
-            }
-            updateDownForce(Speedkmh);
-            updateMotorBreakTorque(motorTorque, brakeTorque);
-            updateWheelAngle(TireSteerAngle);
-            updateTireMeshByWheelCollider();
+            
             
         }
     }
