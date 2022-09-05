@@ -36,7 +36,7 @@ using VRC.Udon;
 using VRC.Udon.Common;
 using TMPro;
 
-//[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 
 public class tkashiUdonVehicle : UdonSharpBehaviour
 {
@@ -105,7 +105,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     private WheelCollider wcFrontR;
     private WheelCollider wcRearL;
     private WheelCollider wcRearR;
-	private bool bDriving = true;
+	private bool bDriving = false;
 
     // Sync Parameters
 
@@ -323,6 +323,14 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
                 float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
                 motorTorque = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
+
+                RequestSerialization();
+            }
+            else
+            {
+                m_thisRigid.MovePosition(LastPos);
+                m_HandleRigid.MovePosition(HandleRigidPos);
+                m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
             }
             updateDownForce(Speedkmh);
             updateMotorBreakTorque(motorTorque, brakeTorque);
