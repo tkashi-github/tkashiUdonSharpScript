@@ -97,7 +97,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     [SerializeField] private Vector3 m_defaultPosHandle = new Vector3(-0.35f, 0.55f, 0.45f);
     [SerializeField] private Vector3 m_defaultPosAccelerator = new Vector3(0.35f, 0.55f, 0.45f);
-    
+    [SerializeField] private bool bDebugMode=false;
     private Rigidbody m_thisRigid;
     private Rigidbody m_HandleRigid;
     private Rigidbody m_AcceleratorRigid;
@@ -105,7 +105,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     private WheelCollider wcFrontR;
     private WheelCollider wcRearL;
     private WheelCollider wcRearR;
-	private bool bDriving = false;
 
     // Sync Parameters
 
@@ -119,6 +118,19 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     [UdonSynced, FieldChangeCallback(nameof(SyncedmotoTorque))] private float motorTorque;
     [UdonSynced, FieldChangeCallback(nameof(SyncedBrakeOn))] private bool BrakeOn;
     [UdonSynced, FieldChangeCallback(nameof(SyncedSpeedkmh))] private float Speedkmh;
+
+	[UdonSynced, FieldChangeCallback(nameof(SyncedbDrive))] private bool bDriving;
+    private bool bDrivingLocal = false;
+
+    public bool SyncedbDrive
+    {
+        set
+        {
+            bDriving = value;
+            bDrivingLocal = bDriving;
+        }
+        get => bDriving;
+    }
 
     public float SyncedSpeedkmh
     {
@@ -212,12 +224,14 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     }
     void Start()
     {
+        bDrivingLocal = bDebugMode;
         setupComponent();
 
         if (Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
         {
             motorTorque = 0u;
             Speedkmh = 0.0f;
+            bDriving = false;
         }
         
 
@@ -290,7 +304,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     private void LateUpdate()
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             if(audioSrcEngineIdle != null)
             {
@@ -301,11 +315,14 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
             {
                 audioSrcRoadNoise.volume = Mathf.Abs(Speedkmh)/ downForceSpeedTh;
             }
-        
+            if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+            {
+                RequestSerialization();
+            }
             // Update speed meter
             int temp = Convert.ToInt32(Speedkmh);
             SpeedMeter.text = temp.ToString();
-            RequestSerialization();
+            
             if(!Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
             {
                 m_thisRigid.MovePosition(LastPos);
@@ -320,7 +337,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     }
     private void FixedUpdate()
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
             {
@@ -346,7 +363,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     }
     private void updateTireMeshByWheelCollider()
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             Vector3 pos;
             Quaternion rot;
@@ -370,7 +387,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     private void updateWheelAngle(float angle)
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             wcFrontL.steerAngle = angle;
             wcFrontR.steerAngle = angle;
@@ -379,15 +396,15 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     public void updateDownForce(float val)
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             float fp = downForceRate*(Speedkmh/downForceSpeedTh);
-            m_thisRigid.AddForce(this.transform.TransformPoint(Vector3.up * fp * (-9.8f)), ForceMode.Force);
+            m_thisRigid.AddForce(this.transform.TransformPoint(Vector3.up * fp * (9.8f)), ForceMode.Force);
         }
     }
     public void updateMotorBreakTorque(float mtrTq, float brkTq)
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             if(BrakeOn == false)
             {
@@ -427,7 +444,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     }
     public override void InputUse(bool value, UdonInputEventArgs args)
     {
-        if (bDriving)
+        if (bDrivingLocal)
         {
             if(Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
             {
@@ -468,16 +485,24 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     {   // OnStationEnteredは全プレイヤーから呼び出される
         initVehicle();
         StationEnterSound();
-        bDriving = true;
-        RequestSerialization();
+        bDrivingLocal = true;
+        if (Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+        {
+            bDriving = true;
+            RequestSerialization();
+        }
     }
 
     public override void OnStationExited()
     {   // OnStationExitedは全プレイヤーから呼び出される
         initVehicle();
         StationExitSound();
-        bDriving = false;
-        RequestSerialization();
+        bDrivingLocal = false;
+        if (Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+        {
+            bDriving = false;
+            RequestSerialization();
+        }
     }
 
     public void StationEnterSound()
