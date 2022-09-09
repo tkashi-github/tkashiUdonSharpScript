@@ -328,10 +328,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 m_thisRigid.MovePosition(LastPos);
                 m_HandleRigid.MovePosition(HandleRigidPos);
                 m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
-                updateDownForce(Speedkmh);
-                updateMotorBreakTorque(motorTorque, brakeTorque);
-                updateWheelAngle(TireSteerAngle);
-                updateTireMeshByWheelCollider();
+                
             }
         }
     }
@@ -351,14 +348,11 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 float EulerAnglesZ = - AcceleratorGameObject.transform.localEulerAngles.x;
                 float radians = EulerAnglesZ / 180 * Mathf.PI; // ラジアンに変換
                 motorTorque = maxMotorTorque * Mathf.Clamp(AcceleratorResponse * Mathf.Sin(radians), -1.0f, 1.0f);
-                updateDownForce(Speedkmh);
-                updateMotorBreakTorque(motorTorque, brakeTorque);
-                updateWheelAngle(TireSteerAngle);
-                updateTireMeshByWheelCollider();
             }
-
-            
-            
+            updateDownForce(Speedkmh);
+            updateMotorBreakTorque(motorTorque, brakeTorque);
+            updateWheelAngle(TireSteerAngle);
+            updateTireMeshByWheelCollider();
         }
     }
     private void updateTireMeshByWheelCollider()
@@ -399,7 +393,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         if (bDrivingLocal)
         {
             float fp = downForceRate*(Speedkmh/downForceSpeedTh);
-            m_thisRigid.AddForce(this.transform.TransformPoint(Vector3.up * fp * (9.8f)), ForceMode.Force);
+            m_thisRigid.AddForce(this.transform.TransformPoint(Vector3.up * fp * (-9.8f)), ForceMode.Force);
         }
     }
     public void updateMotorBreakTorque(float mtrTq, float brkTq)
