@@ -263,6 +263,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 audioSrcEngineStart.Stop();
             }
         }
+        m_thisRigid.centerOfMass = new Vector3(0.0f, 0.0f, 0.0f);
     }
 
     private void resetHande_Accelerator_Position()
