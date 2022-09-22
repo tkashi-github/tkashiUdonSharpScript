@@ -97,6 +97,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
 
     [SerializeField] private Vector3 m_defaultPosHandle = new Vector3(-0.35f, 0.55f, 0.45f);
     [SerializeField] private Vector3 m_defaultPosAccelerator = new Vector3(0.35f, 0.55f, 0.45f);
+    [SerializeField] private Vector3 defaultCenterOfMass = new Vector3(0.0f, 0.0f, 0.0f);
     [SerializeField] private bool bDebugMode=false;
     private Rigidbody m_thisRigid;
     private Rigidbody m_HandleRigid;
@@ -263,7 +264,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 audioSrcEngineStart.Stop();
             }
         }
-        m_thisRigid.centerOfMass = new Vector3(0.0f, 0.0f, 0.0f);
+        m_thisRigid.centerOfMass = defaultCenterOfMass;
     }
 
     private void resetHande_Accelerator_Position()
@@ -302,7 +303,18 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         angle = Mathf.Clamp(angle * handleResponse, -MaxSteerAngle, MaxSteerAngle);
         return angle;
     }
-
+    private void Update()
+    {
+        if (bDrivingLocal)
+        {
+            if(!Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
+            {
+                m_thisRigid.MovePosition(LastPos);
+                m_HandleRigid.MovePosition(HandleRigidPos);
+                m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
+            }
+        }
+    }
     private void LateUpdate()
     {
         if (bDrivingLocal)
@@ -324,13 +336,6 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
             int temp = Convert.ToInt32(Speedkmh);
             SpeedMeter.text = temp.ToString();
             
-            if(!Networking.IsOwner(Networking.LocalPlayer, this.gameObject))
-            {
-                m_thisRigid.MovePosition(LastPos);
-                m_HandleRigid.MovePosition(HandleRigidPos);
-                m_AcceleratorRigid.MovePosition(AcceleratorRigidPos);
-                
-            }
         }
     }
     private void FixedUpdate()
@@ -403,10 +408,42 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         {
             if(BrakeOn == false)
             {
-                wcFrontL.motorTorque = mtrTq;
-                wcFrontR.motorTorque = mtrTq;
-                wcRearL.motorTorque = mtrTq;
-                wcRearR.motorTorque = mtrTq;
+
+                if(isTireSlipping(wcFrontL.rpm, wcFrontL.radius))
+                {   // tires are spinning
+                    wcFrontL.motorTorque = 0.0f;
+                }
+                else
+                {
+                    wcFrontL.motorTorque = mtrTq;
+                }
+
+                if(isTireSlipping(wcFrontR.rpm, wcFrontR.radius))
+                {   // tires are spinning
+                    wcFrontR.motorTorque = 0.0f;
+                }
+                else
+                {
+                    wcFrontR.motorTorque = mtrTq;
+                }
+
+                if(isTireSlipping(wcRearL.rpm, wcRearL.radius))
+                {   // tires are spinning
+                    wcRearL.motorTorque = 0.0f;
+                }
+                else
+                {
+                    wcRearL.motorTorque = mtrTq;
+                }
+
+                if(isTireSlipping(wcRearR.rpm, wcRearR.radius))
+                {   // tires are spinning
+                    wcRearR.motorTorque = 0.0f;
+                }
+                else
+                {
+                    wcRearR.motorTorque = mtrTq;
+                }
                 wcFrontL.brakeTorque = 0.0f;
                 wcFrontR.brakeTorque = 0.0f;
                 wcRearL.brakeTorque = 0.0f;
@@ -418,14 +455,65 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 wcFrontR.motorTorque = 0.0f;
                 wcRearL.motorTorque = 0.0f;
                 wcRearR.motorTorque = 0.0f;
-                wcFrontL.brakeTorque = brkTq;
-                wcFrontR.brakeTorque = brkTq;
-                wcRearL.brakeTorque = brkTq;
-                wcRearR.brakeTorque = brkTq;
+
+                if(isTireSlipping(wcFrontL.rpm, wcFrontL.radius))
+                {   // tires are spinning
+                    wcFrontL.brakeTorque = 0.0f;
+                }
+                else
+                {
+                    wcFrontL.brakeTorque = brkTq;
+                }
+
+                if(isTireSlipping(wcFrontR.rpm, wcFrontR.radius))
+                {   // tires are spinning
+                    wcFrontR.brakeTorque = 0.0f;
+                }
+                else
+                {
+                    wcFrontR.brakeTorque = brkTq;
+                }
+
+                if(isTireSlipping(wcRearL.rpm, wcRearL.radius))
+                {   // tires are spinning
+                    wcRearL.brakeTorque = 0.0f;
+                }
+                else
+                {
+                    wcRearL.brakeTorque = brkTq;
+                }
+
+                if(isTireSlipping(wcRearR.rpm, wcRearR.radius))
+                {   // tires are spinning
+                    wcRearR.brakeTorque = 0.0f;
+                }
+                else
+                {
+                    wcRearR.brakeTorque = brkTq;
+                }
             }
         }
     }
+    private bool isTireSlipping(float tireRpm, float tireRadius)
+    {
+        bool bSlipping = false;
 
+        float VSO = Mathf.Abs(Vector3.Dot(m_thisRigid.velocity, Vector3.Normalize(this.transform.TransformPoint(Vector3.right))));    // m/s
+        float tireSpeed = Mathf.Abs(0.1047197f * tireRadius * tireRpm);    // 3.141592 * 2 * tireRadius / 60
+
+        //Debug.Log("m_thisRigid.velocity.magnitude = " + m_thisRigid.velocity.magnitude);
+        //Debug.Log("Mathf.Abs(m_thisRigid.velocity.z) = " + Mathf.Abs(m_thisRigid.velocity.z));
+        //vector3 tvec3 = new vector3(Vector3.Normalize(this.transform.TransformPoint(Vector3.right)));
+        //Debug.Log("tvec3 = " + Vector3.Normalize(this.transform.TransformPoint(Vector3.right)));
+        //Debug.Log("Mathf.Abs(Vector3.Dot(m_thisRigid.velocity, tvec3))= " + Mathf.Abs(Vector3.Dot(m_thisRigid.velocity, Vector3.Normalize(this.transform.TransformPoint(Vector3.right)))));
+        //Debug.Log("VSO = " + VSO); 
+        //Debug.Log("tireSpeed = " + tireSpeed); 
+        if(tireSpeed > (VSO + 1))
+        {
+            bSlipping = true;
+        }
+        return bSlipping;
+    }
     public override void Interact()
     {
         
