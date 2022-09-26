@@ -98,6 +98,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     [SerializeField] private Vector3 m_defaultPosHandle = new Vector3(-0.35f, 0.55f, 0.45f);
     [SerializeField] private Vector3 m_defaultPosAccelerator = new Vector3(0.35f, 0.55f, 0.45f);
     [SerializeField] private Vector3 defaultCenterOfMass = new Vector3(0.0f, 0.0f, 0.0f);
+    [SerializeField] [Range(0.0f, 10000.0f)] private float maxBreakTorque = 10000.0f;
     [SerializeField] private bool bDebugMode=false;
     private Rigidbody m_thisRigid;
     private Rigidbody m_HandleRigid;
@@ -346,7 +347,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
             {
                 resetHande_Accelerator_Position();
 
-                Speedkmh = m_thisRigid.velocity.magnitude * 3.6f;                        
+                Speedkmh = Mathf.Abs(Vector3.Dot(m_thisRigid.velocity, this.transform.forward)) * 3.6f;                        
                 LastPos = m_thisRigid.position;
                 LastRotation = m_thisRigid.rotation;
                 TireSteerAngle = -getSteerAngle();
@@ -406,16 +407,16 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
     {
         if (bDrivingLocal)
         {
-            Vector3 v = this.transform.TransformPoint(Vector3.right);
-            Vector3 vn = v.normalized;
-            float VSO = Mathf.Abs(Vector3.Dot(m_thisRigid.velocity, vn));    // m/s
-            //Debug.Log("Speed = " + m_thisRigid.velocity.magnitude + ", VSO = " + VSO);
+            //Vector3 v = this.transform.TransformPoint(Vector3.right);
+            //Vector3 vn = v.normalized;
+            float VSO = Mathf.Abs(Vector3.Dot(m_thisRigid.velocity, this.transform.forward));    // m/s
+            Debug.Log("Speed = " + m_thisRigid.velocity.magnitude + ", VSO = " + VSO);
             //Debug.Log("v = " + v + ", vn = " + vn);
 
             if(BrakeOn == false)
             {
 
-                if(isTireSlipping(VSO, wcFrontL.rpm, wcFrontL.radius))
+                if(isTireSlipping(VSO, Mathf.Abs(wcFrontL.rpm), wcFrontL.radius))
                 {   // tires are spinning
                     wcFrontL.motorTorque = 0.0f;
                 }
@@ -424,7 +425,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                     wcFrontL.motorTorque = mtrTq;
                 }
 
-                if(isTireSlipping(VSO, wcFrontR.rpm, wcFrontR.radius))
+                if(isTireSlipping(VSO, Mathf.Abs(wcFrontR.rpm), wcFrontR.radius))
                 {   // tires are spinning
                     wcFrontR.motorTorque = 0.0f;
                 }
@@ -433,7 +434,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                     wcFrontR.motorTorque = mtrTq;
                 }
 
-                if(isTireSlipping(VSO, wcRearL.rpm, wcRearL.radius))
+                if(isTireSlipping(VSO, Mathf.Abs(wcRearL.rpm), wcRearL.radius))
                 {   // tires are spinning
                     wcRearL.motorTorque = 0.0f;
                 }
@@ -442,7 +443,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                     wcRearL.motorTorque = mtrTq;
                 }
 
-                if(isTireSlipping(VSO, wcRearR.rpm, wcRearR.radius))
+                if(isTireSlipping(VSO, Mathf.Abs(wcRearR.rpm), wcRearR.radius))
                 {   // tires are spinning
                     wcRearR.motorTorque = 0.0f;
                 }
@@ -462,7 +463,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 wcRearL.motorTorque = 0.0f;
                 wcRearR.motorTorque = 0.0f;
 
-                if(isTireSlipping(VSO, wcFrontL.rpm, wcFrontL.radius))
+                if((Mathf.Abs(wcFrontR.rpm) <= 0.1f) && (VSO >= 1.0f))
                 {   // tires are spinning
                     wcFrontL.brakeTorque = 0.0f;
                 }
@@ -471,7 +472,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                     wcFrontL.brakeTorque = brkTq;
                 }
 
-                if(isTireSlipping(VSO, wcFrontR.rpm, wcFrontR.radius))
+                if((Mathf.Abs(wcFrontR.rpm) <= 0.1f) && (VSO >= 1.0f))
                 {   // tires are spinning
                     wcFrontR.brakeTorque = 0.0f;
                 }
@@ -480,7 +481,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                     wcFrontR.brakeTorque = brkTq;
                 }
 
-                if(isTireSlipping(VSO, wcRearL.rpm, wcRearL.radius))
+                if((Mathf.Abs(wcRearL.rpm) <= 0.1f) && (VSO >= 1.0f))
                 {   // tires are spinning
                     wcRearL.brakeTorque = 0.0f;
                 }
@@ -489,7 +490,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                     wcRearL.brakeTorque = brkTq;
                 }
 
-                if(isTireSlipping(VSO, wcRearR.rpm, wcRearR.radius))
+                if((Mathf.Abs(wcRearR.rpm) <= 0.1f) && (VSO >= 1.0f))
                 {   // tires are spinning
                     wcRearR.brakeTorque = 0.0f;
                 }
@@ -545,7 +546,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
                 }
                 else
                 {
-                    brakeTorque = maxMotorTorque*2.0f;
+                    brakeTorque = maxBreakTorque;
                 }
                 updateMotorBreakTorque(motorTorque, brakeTorque);  
             }
