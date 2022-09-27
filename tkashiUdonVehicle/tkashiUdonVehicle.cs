@@ -572,7 +572,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         updateTireMeshByWheelCollider();
         m_thisRigid.velocity = Vector3.zero;
     }
-    public override void OnStationEntered()
+    public override void OnStationEntered(VRCPlayerApi player)
     {   // OnStationEnteredは全プレイヤーから呼び出される
         initVehicle();
         StationEnterSound();
@@ -584,7 +584,7 @@ public class tkashiUdonVehicle : UdonSharpBehaviour
         }
     }
 
-    public override void OnStationExited()
+    public override void OnStationExited(VRCPlayerApi player)
     {   // OnStationExitedは全プレイヤーから呼び出される
         initVehicle();
         StationExitSound();
